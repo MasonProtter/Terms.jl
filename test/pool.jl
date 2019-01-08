@@ -15,7 +15,7 @@ end
 
     @testset "$expr" for expr ∈ EXPRS
         term = push!(pool, expr)
-        @test pool[term] == expr
+        @test convert(Expr, pool[term]) == expr
     end
 end
 
@@ -29,7 +29,7 @@ end
     subject1 = :(a * (a + var))
     σ₁ = match(pattern, push!(pool, subject1))
     @test length(σ₁) == 2
-    @test pool[σ₁(pattern)] == subject1
+    @test convert(Expr, pool[σ₁(pattern)]) == subject1
 
     subject2 = :(a * (b + var))
     σ₂ = match(pattern, push!(pool, subject2))

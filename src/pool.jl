@@ -7,13 +7,20 @@ struct Pool{T}
     Pool{T}() where {T} = new{T}(Dict{T,UInt}(), T[])
 end
 
-Base.push!(p::Pool, ex) = expr_to_term(to_pool(p), Union{UInt,Variable}, ex)
-Base.getindex(p::Pool, t::Term) = term_to_expr(from_pool(p), t)
+Base.push!(p::Pool{T}, ex) where {T} = push!(p, convert(Pattern{T}, ex))
+function Base.push!(p::Pool, t::Term)
+    isa(t.head, Variable) && return Term{Variable}(t.head, t.args)
+    return Term(to_pool!(p, t.head), push!.(p, t.args))
+end
+function Base.getindex(p::Pool{T}, t::Term) where {T}
+    isa(t.head, Variable) && return Pattern{T}(t.head, t.args)
+    return Pattern{T}(from_pool(p, t.head), getindex.(p, t.args))
+end
+
+Base.broadcastable(p::Pool) = Ref(p)
 
 
-to_pool(p::Pool) = Base.Fix1(to_pool, p)
-function to_pool(p::Pool, x)
-    isa(x, Variable) && return x
+function to_pool!(p::Pool, x)
     haskey(p.ids, x) && return p.ids[x]
 
     push!(p.lookup, x)
@@ -21,6 +28,4 @@ function to_pool(p::Pool, x)
     p.ids[x] = index
     return index
 end
-
-from_pool(p::Pool) = Base.Fix1(from_pool, p)
 from_pool(p::Pool, x) = isa(x, UInt) ? p.lookup[x] : x

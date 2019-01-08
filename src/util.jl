@@ -1,22 +1,21 @@
-function expr_to_term(f::Function, T, x)
-    isa(x, Expr) || return Term{T}(f(x), Term{T}[])
+function expr_to_term(T, x, f = _expr_static)
+    isa(x, Expr) || return Term{f(T, x)}(x, Term{T}[])
 
     args = similar(x.args, Term{T})
     for i ∈ eachindex(x.args)
-        args[i] = expr_to_term(f, T, x.args[i])
+        args[i] = expr_to_term(T, x.args[i])
     end
-    return Term{T}(f(x.head), args)
+    return Term{f(T, x.head)}(x.head, args)
 end
-expr_to_term(T, x) = expr_to_term(identity, T, x)
+_expr_static(T, x) = T
+_expr_build(T, x) = promote_type(T, typeof(x))
 
 
-function term_to_expr(f::Function, t::Term)
-    head = f(t.head)
-    isempty(t.args) && return head
-    isa(head, Symbol) || throw(ArgumentError("invalid `Expr` head ($head)"))
+function term_to_expr(t::Term)
+    isempty(t.args) && return t.head
+    isa(t.head, Symbol) || throw(ArgumentError("invalid `Expr` head ($(t.head))"))
 
-    expr = Expr(head)
-    append!(expr.args, term_to_expr.(f, t.args))
+    expr = Expr(t.head)
+    append!(expr.args, term_to_expr.(t.args))
     return expr
 end
-term_to_expr(t::Term) = term_to_expr(identity, t)
